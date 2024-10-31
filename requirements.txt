@@ -2,4 +2,3 @@ streamlit
 supabase
 openai
 gtts
-tempfile
