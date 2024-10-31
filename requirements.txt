@@ -1,0 +1,5 @@
+streamlit
+supabse
+openai
+gtts
+tempfile
