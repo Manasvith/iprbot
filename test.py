@@ -142,7 +142,7 @@ with st.container():
                 st.write(entry["query"])
             with st.chat_message(name="ai"):
                 if i == 0 and st.session_state.display_response:  # Stream the latest response
-                    st.write((entry['response']))
+                    st.write(stream_data(entry['response']))
                         # Note: st.write does not support the end parameter in Streamlit
                         # Instead, consider using st.empty to update the response incrementally
                         # For simplicity, we will display the full response without streaming
