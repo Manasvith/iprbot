@@ -143,9 +143,6 @@ with st.container():
             with st.chat_message(name="ai"):
                 if i == 0 and st.session_state.display_response:  # Stream the latest response
                     st.write(stream_data(entry['response']))
-                        # Note: st.write does not support the end parameter in Streamlit
-                        # Instead, consider using st.empty to update the response incrementally
-                        # For simplicity, we will display the full response without streaming
                     # Optional "Play Audio" button at the end of the AI response
                     if st.button("Play Audio for Current Response", key="audio_button_current"):
                         audio_file = generate_speech(entry['response'])
@@ -166,7 +163,7 @@ with st.sidebar:
             query_text = history.data[i-1]['query']
             date_text = history.data[i-1]['date']
             # Truncate query_text for display purposes if too long
-            display_query = (query_text[:50] + '...') if len(query_text) > 50 else query_text
+            display_query = (query_text[:20] + '...') if len(query_text) > 20 else query_text
             if st.button(f"{i}. {display_query}", key=f"history_{i}", use_container_width=True):
                 retrieve_history(date_text)
     else:
