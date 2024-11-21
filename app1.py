@@ -3,6 +3,7 @@ import runpy
 from constants import SUPABASE_PROJECT_API_KEY, SUPABASE_PROJECT_URL
 from supabase import create_client, Client
 import supabase
+import re
 
 url = SUPABASE_PROJECT_URL
 api_key = SUPABASE_PROJECT_API_KEY
@@ -16,8 +17,15 @@ def login(email, password):
         return True
     return False
 
+def is_valid_email(email):
+    # Regular expression for a valid email
+    email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    return re.match(email_regex, email) is not None
+
 # Function to register user
 def register_user(email, password, confirm_password):
+    if not is_valid_email(email):  # Check if email is valid
+        return False, "Invalid email format"
     if password != confirm_password:
         return False, "Passwords do not match"
     response = supabase.table("Users").select("*").eq("email", email).execute()
@@ -84,5 +92,3 @@ elif 'show_register' in st.session_state and st.session_state.show_register:
     register_page()
 else:
     login_page()
-
-#end
