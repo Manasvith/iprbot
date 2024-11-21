@@ -4,3 +4,4 @@ openai
 gtts
 boto3
 SpeechRecognition
+pyaudio
