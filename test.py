@@ -1,5 +1,5 @@
 import openai
-from constants import OPENAI_API_KEY, SUPABASE_PROJECT_API_KEY, SUPABASE_PROJECT_URL
+from constants import OPENAI_API_KEY, SUPABASE_PROJECT_API_KEY, SUPABASE_PROJECT_URL, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID
 import time
 import warnings
 import streamlit as st
@@ -7,6 +7,8 @@ from supabase import create_client, Client
 import datetime
 from gtts import gTTS
 import tempfile
+import boto3
+import speech_recognition as sr
 
 warnings.filterwarnings("ignore")
 
@@ -20,6 +22,15 @@ url = SUPABASE_PROJECT_URL
 api_key = SUPABASE_PROJECT_API_KEY
 supabase: Client = create_client(url, api_key)
 
+#Initialize AWS Client
+translate = boto3.client(
+    service_name='translate',
+    region_name='us-east-1',
+    aws_access_key_id= AWS_ACCESS_KEY_ID,
+    aws_secret_access_key = AWS_SECRET_ACCESS_KEY,
+    use_ssl=True
+)
+
 # Function to handle query
 def handle_query(query):
     finetuned_response = client.chat.completions.create(
@@ -27,7 +38,7 @@ def handle_query(query):
         messages=[
             {
                 "role": "system",
-                "content": f"""You are an expert in intellectual property rights based in India. Your task is to provide accurate and helpful responses related to intellectual property rights only. The user has asked {query}. Provide a response that is relevant to intellectual property rights and their related laws and Acts. If the query is not related to intellectual property rights, state that you can only assist with queries related to intellectual property rights."""
+                "content": f"""You are an expert in intellectual property rights based in India. Your task is to provide accurate and helpful responses related to intellectual property rights only. The user has asked {query}. Provide a response that is relevant to intellectual property rights and their related laws and Acts. If the query is not related to intellectual property rights, state that you can only assist with queries related to intellectual property rights. If the query is a request to follow up the previous response, perform the requested action."""
             },
             {"role": "user", "content": query}
         ],
@@ -92,6 +103,44 @@ def retrieve_history(date):
     st.session_state.display_response = ""  # Clear any ongoing response stream
     st.rerun()
 
+def speech_to_text():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.info("Listening... Speak into the microphone.")
+        try:
+            audio = recognizer.listen(source, timeout=5)  # Listen for audio input
+            text = recognizer.recognize_google(audio)  # Use Google Speech Recognition
+            st.success(f"Recognized: {text}")
+            return text
+        except sr.WaitTimeoutError:
+            st.error("Listening timed out. Please try again.")
+        except sr.UnknownValueError:
+            st.error("Could not understand the audio. Please try again.")
+        except sr.RequestError as e:
+            st.error(f"Could not request results from the speech recognition service: {e}")
+        return ""
+
+# Function to translate text
+def translate_response(response, target_language):
+    result = translate.translate_text(Text=response, SourceLanguageCode="en", TargetLanguageCode=target_language)
+    return result['TranslatedText']
+
+
+# Adding a dropdown for language selection at the bottom of responses
+language_options = {
+    "English": "en",
+    "Hindi": "hi",
+    "Telugu": "te",
+    "Bengali": "bn",
+    "Tamil": "ta",
+    "Kannada": "ka",
+    "Malayalam": "ml",
+    "Marathi": "mr",
+    "Gujarati": "gu"
+}
+
+selected_language = st.selectbox("Translate response to:", options=list(language_options.keys()))
+
 # Streamlit application setup
 st.markdown("<h1 style='text-align: center;'> Chatbot for IPR </h1>", unsafe_allow_html=True)
 
@@ -109,6 +158,9 @@ if "display_response" not in st.session_state:
 with st.container():
     query = st.chat_input("Enter your query here:")
 
+    if st.button("Use Speech Input"):
+        query = speech_to_text()
+    
     if query:
         # Clear retrieved_history when a new query is entered
         st.session_state.retrieved_history = []
@@ -132,7 +184,13 @@ with st.container():
             with st.chat_message(name="user"):
                 st.write(entry["query"])
             with st.chat_message(name="ai"):
-                st.write(entry["response"])
+                if selected_language == "English":
+                        st.write((entry['response']))
+
+                if selected_language != "English":  # Translate only if a non-English language is selected
+                    translated_response = translate_response(entry["response"], language_options[selected_language])
+                    st.markdown(f"**Translated to {selected_language}:**")
+                    st.write((translated_response))
 
     elif st.session_state.current_history:
         st.markdown("<h2 style='text-align: center;'> Current Conversation </h2>", unsafe_allow_html=True)
@@ -142,13 +200,30 @@ with st.container():
                 st.write(entry["query"])
             with st.chat_message(name="ai"):
                 if i == 0 and st.session_state.display_response:  # Stream the latest response
-                    st.write(stream_data(entry['response']))
-                    # Optional "Play Audio" button at the end of the AI response
-                    if st.button("Play Audio for Current Response", key="audio_button_current"):
+                    if selected_language == "English":
+                        st.write(stream_data(entry['response']))
                         audio_file = generate_speech(entry['response'])
                         st.audio(audio_file)
+
+                    if selected_language != "English":  # Translate only if a non-English language is selected
+                        translated_response = translate_response(entry["response"], language_options[selected_language])
+                        st.markdown(f"**Translated to {selected_language}:**")
+                        st.write(stream_data(translated_response))
+                        audio_file = generate_speech(translated_response)
+                        st.audio(audio_file)
+                    
+                    # Optional "Play Audio" button at the end of the AI response
+                    # if st.button("Play Audio for Current Response", key="audio_button_current"):
+                    #     audio_file = generate_speech(entry['response'])
+                    #     st.audio(audio_file)
                 else:  # Display previous responses without streaming
-                    st.write(entry["response"])
+                    if selected_language == "English":
+                        st.write((entry['response']))
+
+                    if selected_language != "English":  # Translate only if a non-English language is selected
+                        translated_response = translate_response(entry["response"], language_options[selected_language])
+                        st.markdown(f"**Translated to {selected_language}:**")
+                        st.write((translated_response))
     else:
         st.write("Conversation reset. Start a new chat.")
 
@@ -163,7 +238,7 @@ with st.sidebar:
             query_text = history.data[i-1]['query']
             date_text = history.data[i-1]['date']
             # Truncate query_text for display purposes if too long
-            display_query = (query_text[:20] + '...') if len(query_text) > 20 else query_text
+            display_query = (query_text[:50] + '...') if len(query_text) > 50 else query_text
             if st.button(f"{i}. {display_query}", key=f"history_{i}", use_container_width=True):
                 retrieve_history(date_text)
     else:
