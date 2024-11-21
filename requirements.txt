@@ -3,4 +3,4 @@ supabase
 openai
 gtts
 boto3
-speech_recognition
+SpeechRecognition pyaudio
