@@ -9,6 +9,8 @@ from gtts import gTTS
 import tempfile
 import boto3
 import speech_recognition as sr
+from audio_recorder_streamlit import audio_recorder
+
 
 warnings.filterwarnings("ignore")
 
@@ -103,22 +105,31 @@ def retrieve_history(date):
     st.session_state.display_response = ""  # Clear any ongoing response stream
     st.rerun()
 
-def speech_to_text():
+def speech_to_text(audio_bytes):
+    """
+    Records audio using the Streamlit audio recorder and converts it to text using SpeechRecognition.
+    """
+
+    # Play the recorded audio
+    #st.audio(audio_bytes, format="audio/wav")
+
+    # Save the audio to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
+        temp_audio_file.write(audio_bytes)
+        temp_audio_path = temp_audio_file.name
+
+    # Convert the audio file to text using SpeechRecognition
     recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("Listening... Speak into the microphone.")
-        try:
-            audio = recognizer.listen(source, timeout=5)  # Listen for audio input
-            text = recognizer.recognize_google(audio)  # Use Google Speech Recognition
-            st.success(f"Recognized: {text}")
-            return text
-        except sr.WaitTimeoutError:
-            st.error("Listening timed out. Please try again.")
-        except sr.UnknownValueError:
-            st.error("Could not understand the audio. Please try again.")
-        except sr.RequestError as e:
-            st.error(f"Could not request results from the speech recognition service: {e}")
-        return ""
+    try:
+        with sr.AudioFile(temp_audio_path) as source:
+            audio_data = recognizer.record(source)  # Read the entire audio file
+            text_output = recognizer.recognize_google(audio_data)  # Use Google's Speech-to-Text
+            st.success(f"Detected Text: {text_output}")
+            return text_output
+    except sr.UnknownValueError:
+        st.error("Speech was not clear. Unable to convert to text.")
+    except sr.RequestError as e:
+        st.error(f"Could not request results from the Speech Recognition service; {e}")
 
 # Function to translate text
 def translate_response(response, target_language):
@@ -158,10 +169,20 @@ if "display_response" not in st.session_state:
 with st.container():
     query = st.chat_input("Enter your query here:")
 
-    if st.button("Use Speech Input"):
-        query = speech_to_text()
+    audio_bytes = audio_recorder()
+
+    if audio_bytes:
+        query = speech_to_text(audio_bytes)
     
-    if query:
+    if "latest_query" not in st.session_state:
+        st.session_state.latest_query = None
+
+    if "latest_response" not in st.session_state:
+        st.session_state.latest_response = None
+
+    if query and query != st.session_state.latest_query:
+        # New query submitted
+        st.session_state.latest_query = query
         # Clear retrieved_history when a new query is entered
         st.session_state.retrieved_history = []
         
