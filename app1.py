@@ -11,28 +11,38 @@ supabase: Client = create_client(url, api_key)
 
 # Function to validate login
 def login(email, password):
-    response = supabase.table("Users").select("*").eq("email", email).eq("password", password).execute()
-    if len(response.data) > 0:
+    try:
+        response = supabase.auth.sign_in_with_password({
+            'email': email,
+            'password': password
+        })
         st.session_state.user_email = email
         return True
-    return False
 
-def is_valid_email(email):
-    # Regular expression for a valid email
-    email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    return re.match(email_regex, email) is not None
+    except Exception as e:
+        return False
+
 
 # Function to register user
 def register_user(email, password, confirm_password):
-    if not is_valid_email(email):  # Check if email is valid
-        return False, "Invalid email format"
     if password != confirm_password:
         return False, "Passwords do not match"
-    response = supabase.table("Users").select("*").eq("email", email).execute()
+    
+    response = supabase.table("Users").select("*").eq("email", email).execute();
     if len(response.data) > 0:
-        return False, "Email already registered"
-    supabase.table("Users").insert({"email": email, "password": password}).execute() 
-    return True, "Registration successful"
+        return False, "User already registered"
+
+    try:
+        response = supabase.auth.sign_up({
+        'email': email,
+        'password': password
+        })
+
+        supabase.table("Users").insert({'email': email, 'password': password}).execute()
+        return True, "Registration successful"
+    except Exception as e:
+        return False, e
+
 
 # Handle login and register state in session
 if 'logged_in' not in st.session_state:
