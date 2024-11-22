@@ -2,6 +2,7 @@ import openai
 from constants import OPENAI_API_KEY, SUPABASE_PROJECT_API_KEY, SUPABASE_PROJECT_URL, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID
 import time
 import warnings
+import os
 import streamlit as st
 from supabase import create_client, Client
 import datetime
@@ -109,10 +110,6 @@ def speech_to_text(audio_bytes):
     """
     Records audio using the Streamlit audio recorder and converts it to text using SpeechRecognition.
     """
-
-    # Play the recorded audio
-    #st.audio(audio_bytes, format="audio/wav")
-
     # Save the audio to a temporary file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
         temp_audio_file.write(audio_bytes)
@@ -128,8 +125,15 @@ def speech_to_text(audio_bytes):
             return text_output
     except sr.UnknownValueError:
         st.error("Speech was not clear. Unable to convert to text.")
+        return None  # Explicitly return None on failure
     except sr.RequestError as e:
         st.error(f"Could not request results from the Speech Recognition service; {e}")
+        return None  # Explicitly return None on failure
+    finally:
+        # Ensure the temporary file is deleted after use
+        if os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)  # Delete the temporary audio file
+
 
 # Function to translate text
 def translate_response(response, target_language):
@@ -165,20 +169,27 @@ if "retrieved_history" not in st.session_state:
 if "display_response" not in st.session_state:
     st.session_state.display_response = ""
 
+st.session_state.voice_response = ""
+
 # Main content display logic
 with st.container():
     query = st.chat_input("Enter your query here:")
 
-    audio_bytes = audio_recorder()
+    audio_bytes = audio_recorder(pause_threshold=1.0)
 
-    if audio_bytes:
-        query = speech_to_text(audio_bytes)
+    if not query and audio_bytes:
+        recognized_query = speech_to_text(audio_bytes)
+        if recognized_query:  # Only update query if recognition was successful
+            query = recognized_query
+            st.session_state.voice_response = recognized_query
     
     if "latest_query" not in st.session_state:
         st.session_state.latest_query = None
 
     if "latest_response" not in st.session_state:
         st.session_state.latest_response = None
+
+    st.write(query)
 
     if query and query != st.session_state.latest_query:
         # New query submitted
