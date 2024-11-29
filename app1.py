@@ -97,7 +97,7 @@ def register_page():
 # Control flow based on login and register state
 if st.session_state.logged_in:
     # Instead of calling a function, we load the entire app file
-    runpy.run_path("test.py")  # This will execute app.py as a script
+    runpy.run_path("chatbot.py")  # This will execute app.py as a script
 elif 'show_register' in st.session_state and st.session_state.show_register:
     register_page()
 else:
