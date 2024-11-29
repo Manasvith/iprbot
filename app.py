@@ -4,8 +4,8 @@ from supabase import create_client, Client
 import supabase
 import re
 
-url = SUPABASE_PROJECT_URL
-api_key = SUPABASE_PROJECT_API_KEY
+url = st.secrets["SUPABASE_PROJECT_URL"]
+api_key = st.secrets["SUPABASE_PROJECT_API_KEY"]
 supabase: Client = create_client(url, api_key)
 
 # Function to validate login
