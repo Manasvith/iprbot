@@ -1,6 +1,5 @@
 import streamlit as st
 import runpy
-from constants import SUPABASE_PROJECT_API_KEY, SUPABASE_PROJECT_URL
 from supabase import create_client, Client
 import supabase
 import re
