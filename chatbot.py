@@ -1,5 +1,4 @@
 import openai
-from constants import OPENAI_API_KEY, SUPABASE_PROJECT_API_KEY, SUPABASE_PROJECT_URL, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID
 import time
 import warnings
 import os
