@@ -15,21 +15,21 @@ from audio_recorder_streamlit import audio_recorder
 warnings.filterwarnings("ignore")
 
 # Set the API key
-openai.api_key = OPENAI_API_KEY
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 user_email = st.session_state.get('user_email', 'Unknown User')
 
 # Initialize Supabase client
-url = SUPABASE_PROJECT_URL
-api_key = SUPABASE_PROJECT_API_KEY
+url = st.secrets["SUPABASE_PROJECT_URL"]
+api_key = st.secrets["SUPABASE_PROJECT_API_KEY"]
 supabase: Client = create_client(url, api_key)
 
 #Initialize AWS Client
 translate = boto3.client(
     service_name='translate',
     region_name='us-east-1',
-    aws_access_key_id= AWS_ACCESS_KEY_ID,
-    aws_secret_access_key = AWS_SECRET_ACCESS_KEY,
+    aws_access_key_id= st.secrets["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key = st.secrets["AWS_SECRET_ACCESS_KEY"],
     use_ssl=True
 )
 
